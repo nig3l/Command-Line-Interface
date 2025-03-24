@@ -1,15 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 )
 // Task represents a single todo item
 type Task struct {
-	ID        int
-	Desc      string
-	Completed bool
+	ID        int   `json:"id"`
+	Desc      string `json:"desc"`
+	Completed bool  `json:"completed"`
 }
 
 // TodoList holds all tasks
@@ -22,6 +23,7 @@ func (tl *TodoList) addTask(desc string) {
 	id := len(tl.Tasks) + 1
 	task := Task{ID: id, Desc: desc, Completed: false}
 	tl.Tasks = append(tl.Tasks, task)
+	tl.saveToFile("tasks.json")
 	fmt.Printf("Added task: %s (ID: %d)\n", desc, id)
 }
 
@@ -39,8 +41,36 @@ func (tl *TodoList) listTasks() {
 	}
 }
 
+func (tl *TodoList) saveToFile(filename string) error {
+	data, err := json.MarshalIndent(tl.Tasks, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename, data, 0644)
+}
+
+func loadFromFile(filename string) (*TodoList, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &TodoList{}, nil // Returning an empty list if file doesn’t exist
+		}
+		return nil, err
+	}
+	var tasks []Task
+	if err := json.Unmarshal(data, &tasks); err != nil {
+		return nil, err
+	}
+	return &TodoList{Tasks: tasks}, nil
+}
+
 func main() {
-	todo := &TodoList{}
+
+	todo, err := loadFromFile("tasks.json")
+	if err != nil {
+		fmt.Println("Error loading tasks:", err)
+		return
+	}
 
 	// Simple CLI loop
 	for {
